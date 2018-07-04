@@ -6,6 +6,7 @@ import signal
 import sys
 import threading
 import time
+import math
 from random import choice
 
 import click
@@ -291,10 +292,9 @@ class Tetris(threading.Thread):
             if len(row_data) == count:
                 full_rows.append(row)
         for row in full_rows:
-            self.point += 10
             for col in range(1, count + 1):
                 self.board_matrix[(col, row)] = 0
-        self.point += (full_rows and (len(full_rows) - 1) * 5 or 0) * len(full_rows)
+        self.set_point((10 + (full_rows and (len(full_rows) - 1) * 5 or 0)) * len(full_rows))
         return full_rows
 
     def rearrange_board(self, rows):
@@ -323,6 +323,10 @@ class Tetris(threading.Thread):
         self.next_shape = chosen_shape
         self.next_rotate = chosen_rotate
 
+    def set_point(self, amount):
+        self.point += amount
+        self.level = (self.point / 100) + 1
+
     def update(self):
         self.clear_console()
         self.clear_board()
@@ -330,7 +334,7 @@ class Tetris(threading.Thread):
         if self.check_board_persistence():
             Shape.get_shape(self)
             gain_point = len(sum(Shape.current_rotate, []))
-            self.point += gain_point
+            self.set_point(gain_point)
             self.make_board_persist()
             rows = self.check_rows()
             self.rearrange_board(rows)
@@ -345,7 +349,7 @@ class Tetris(threading.Thread):
         self.choose_next_shape()
         while not self.shutdown_flag.is_set():
             self.move_down()
-            time.sleep(.2)
+            time.sleep(math.pow(3.0/4.0, self.level - 1))
 
 
 def main():
