@@ -45,10 +45,15 @@ class Shape(threading.Thread):
 
     @staticmethod
     def get_shape(board):
+        Shape.board = board
+        if not Shape.current_shape:
+            Shape.current_shape = board.next_shape
+            Shape.rotate = board.next_rotate
+            Shape.board.choose_next_shape()
+
         Shape.current_shape = Shape.current_shape or SHAPES[choice(SHAPES.keys())]
         Shape.rotate = Shape.rotate is None and choice(range(len(Shape.current_shape))) or Shape.rotate
         Shape.current_rotate = Shape.current_rotate or Shape.current_shape[Shape.rotate or 0]
-        Shape.board = board
 
     def run(self):
         while not self.shutdown_flag.is_set():
@@ -111,6 +116,8 @@ class Tetris(threading.Thread):
         self.board_matrix = {}
         self.point = 0
         self.level = 1
+        self.next_shape = None
+        self.next_rotate = None
         self.clear_board(reset=True)
 
     def clear_board(self, reset=False):
@@ -130,43 +137,49 @@ class Tetris(threading.Thread):
 
     def create_board(self):
         row_print = ''
-        score_text = '  SCORE'
-        level_text = '  LEVEL'
-        score = ' ' * (7 - len(str(self.point))) + str(self.point)
-        level = ' ' * (7 - len(str(self.level))) + str(self.level)
+
+        max_len = max(7, len(str(self.point)), len(str(self.level)))
+        score_text = ' ' * (max_len - 5) + 'SCORE'
+        level_text = ' ' * (max_len - 5) + 'LEVEL'
+        score = ' ' * (max_len - len(str(self.point))) + str(self.point)
+        level = ' ' * (max_len - len(str(self.level))) + str(self.level)
+
         for row in range(self.row + 1):
-            for col in range(self.col + 1 + 1 + 5):
+            for col in range(self.col + max_len):
                 if row == 0 and col == self.col:
                     row_print += '┬'
-                elif row == 0 and col == self.col + 6:
+                elif row == 0 and col == self.col + max_len - 1:
                     row_print += '┐'
                 elif row == 1 and col > self.col:
                     row_print += score_text[col - self.col]
-                    if col == self.col + 6:
-                        row_print += ' '*4 + '│'
+                    if col == self.col + max_len - 1:
+                        row_print += ' ' * (max_len - 3) + '│'
                 elif row == 2 and col > self.col:
                     row_print += score[col - self.col]
-                    if col == self.col + 6:
-                        row_print += ' '*4 + '│'
+                    if col == self.col + max_len - 1:
+                        row_print += ' ' * (max_len - 3) + '│'
                 elif row == 5 and col > self.col:
                     row_print += level_text[col - self.col]
-                    if col == self.col + 6:
-                        row_print += ' ' * 4 + '│'
+                    if col == self.col + max_len - 1:
+                        row_print += ' ' * (max_len - 3) + '│'
                 elif row == 6 and col > self.col:
                     row_print += level[col - self.col]
-                    if col == self.col + 6:
-                        row_print += ' ' * 4 + '│'
+                    if col == self.col + max_len - 1:
+                        row_print += ' ' * (max_len - 3) + '│'
+                # TODO: Next shape
+                # elif row == 10 and col > self.col:
+                #     pass
                 elif row == col == 0:
                     row_print += '┌'
                 elif row == self.row and col == 0:
                     row_print += '└'
                 elif row == self.row and col == self.col:
                     row_print += '┴'
-                elif row == self.row and col == self.col + 6:
+                elif row == self.row and col == self.col + max_len - 1:
                     row_print += '┘'
                 elif row == self.row or row == 0:
-                    row_print += '─'*2
-                elif col == 0 or col == self.col or col == self.col + 6:
+                    row_print += '─' * 2
+                elif col == 0 or col == self.col or col == self.col + max_len - 1:
                     row_print += '│'
                 else:
                     row_print += '{}{} '.format(COLORS[str(self.board_matrix.get((col, row), 0))], ' ')
@@ -177,38 +190,30 @@ class Tetris(threading.Thread):
         if movement > 0:
             if self.col_count + len(Shape.current_rotate) + movement >= self.col:
                 return False
-            shape_height = len(Shape.current_rotate[0])
-            shape_width = len(Shape.current_rotate)
-            x_index = self.col_count + shape_width
-            y_indexes = range(self.row_count, self.row_count + shape_height)
-            board_points = map(lambda y: (x_index, y), y_indexes)
+            flag = True
+            for i, row in enumerate(Shape.current_rotate):
+                for k, col in enumerate(row):
+                    point = [i + self.col_count + movement, k + self.row_count]
+                    if (self.board_matrix[point[0], point[1]] > 10 and col > 0) or point[1] == self.row:
+                        flag = False
+                if not flag:
+                    break
 
-            shape_y_indexes = range(shape_height)
-            shape_points = map(lambda y: (shape_width - 1, y), shape_y_indexes)
-
-            board_indexes = map(lambda point: self.board_matrix.get(point), board_points)
-            shape_indexes = map(lambda point: Shape.current_rotate[point[0]][point[1]], shape_points)
-
-            if filter(lambda x: 10 < x[0] and 0 < x[1], zip(board_indexes, shape_indexes)):
-                return False
+            return flag
 
         elif movement < 0:
             if self.col_count < 2:
                 return False
-            shape_height = len(Shape.current_rotate[0])
-            shape_width = len(Shape.current_rotate)
-            x_index = self.col_count
-            y_indexes = range(self.row_count, self.row_count + shape_height)
-            board_points = map(lambda y: (x_index, y), y_indexes)
+            flag = True
+            for i, row in enumerate(Shape.current_rotate):
+                for k, col in enumerate(row):
+                    point = [i + self.col_count + movement, k + self.row_count + 1]
+                    if (self.board_matrix[point[0], point[1]] > 10 and col > 0) or point[1] == self.row:
+                        flag = False
+                if not flag:
+                    break
 
-            shape_y_indexes = range(shape_height)
-            shape_points = map(lambda y: (0, y), shape_y_indexes)
-
-            board_indexes = map(lambda point: self.board_matrix.get(point), board_points)
-            shape_indexes = map(lambda point: Shape.current_rotate[point[0]][point[1]], shape_points)
-
-            if filter(lambda x: 10 < x[0] and 0 < x[1], zip(board_indexes, shape_indexes)):
-                return False
+            return flag
         return True
 
     def draw_shape(self, persist=False):
@@ -219,34 +224,51 @@ class Tetris(threading.Thread):
                 if col:
                     self.board_matrix[point[0], point[1]] = col + int(persist and 10)
 
+    def draw_next(self):
+        shape = self.next_shape[self.next_rotate or 0]
+        for i, row in enumerate(shape):
+            for k, col in enumerate(row):
+                point = [i, k + 10]
+                if col:
+                    self.board_matrix[point[0], point[1]] = col
+
     def make_board_persist(self):
         self.draw_shape(persist=True)
         self.row_count = 0
         self.col_count = (self.col - 2) / 2
 
     def check_board_persistence(self):
+        """
+        Check if shape hit the ground or not.
+        :return:
+        """
         Shape.get_shape(self)
+
         shape_height = len(Shape.current_rotate[0])
-        shape_width = len(Shape.current_rotate)
-
         y_index = self.row_count + shape_height - 1
-        x_indexes = range(self.col_count, self.col_count + shape_width)
-        board_points = map(lambda x: (x, y_index + 1), x_indexes)
-
-        shape_x_indexes = range(shape_width)
-        shape_points = map(lambda x: (x, shape_height - 1), shape_x_indexes)
 
         if y_index + 1 == self.row:
             return True
 
-        board_indexes = map(lambda point: self.board_matrix.get(point), board_points)
-        shape_indexes = map(lambda point: Shape.current_rotate[point[0]][point[1]], shape_points)
+        flag = False
+        for i, row in enumerate(Shape.current_rotate):
+            for k, col in enumerate(row):
+                point = [i + self.col_count, k + self.row_count + 1]
+                if self.board_matrix[point[0], point[1]] > 10 and col > 0:
+                    flag = True
+            if flag:
+                break
 
-        if filter(lambda x: 10 < x[0] and 0 < x[1], zip(board_indexes, shape_indexes)):
+        if flag:
             return True
+
         return False
 
     def check_rows(self):
+        """
+        Check lines if the completed by shapes or not
+        :return: list of full lines indexes on board
+        """
         full_rows = []
         count = self.col - 2
         for row in range(self.row):
@@ -257,9 +279,15 @@ class Tetris(threading.Thread):
             self.point += 10
             for col in range(1, count + 1):
                 self.board_matrix[(col, row)] = 0
+        self.point += (full_rows and (len(full_rows) - 1) * 5 or 0) * len(full_rows)
         return full_rows
 
     def rearrange_board(self, rows):
+        """
+        re print board focus on cleared lines,
+        recursively arrange lines
+        :param rows: cleared rows indexes
+        """
         if not rows:
             return True
         count = self.col - 2
@@ -274,11 +302,20 @@ class Tetris(threading.Thread):
         _ = rows.pop(0)
         return self.rearrange_board(rows)
 
+    def choose_next_shape(self):
+        chosen_shape = SHAPES[choice(SHAPES.keys())]
+        chosen_rotate = choice(range(len(chosen_shape)))
+        self.next_shape = chosen_shape
+        self.next_rotate = chosen_rotate
+
     def update(self):
         self.clear_console()
         self.clear_board()
         self.draw_shape()
         if self.check_board_persistence():
+            Shape.get_shape(self)
+            gain_point = len(sum(Shape.current_rotate, []))
+            self.point += gain_point
             self.make_board_persist()
             rows = self.check_rows()
             self.rearrange_board(rows)
@@ -290,6 +327,7 @@ class Tetris(threading.Thread):
         self.row_count += 1
 
     def run(self):
+        self.choose_next_shape()
         while not self.shutdown_flag.is_set():
             self.move_down()
             time.sleep(.2)
