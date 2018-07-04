@@ -325,7 +325,7 @@ class Tetris(threading.Thread):
 
     def set_point(self, amount):
         self.point += amount
-        self.level = (self.point / 100) + 1
+        self.level = (self.point / 500) + 1
 
     def update(self):
         self.clear_console()
