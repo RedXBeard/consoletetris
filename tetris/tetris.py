@@ -138,11 +138,16 @@ class Tetris(threading.Thread):
     def create_board(self):
         row_print = ''
 
-        max_len = max(7, len(str(self.point)), len(str(self.level)))
+        max_len = max(10, len(str(self.point)), len(str(self.level)))
         score_text = ' ' * (max_len - 5) + 'SCORE'
         level_text = ' ' * (max_len - 5) + 'LEVEL'
         score = ' ' * (max_len - len(str(self.point))) + str(self.point)
         level = ' ' * (max_len - len(str(self.level))) + str(self.level)
+
+        next_shape = self.next_shape[self.next_rotate or 0]
+        next_shape_width = len(next_shape)
+        next_shape_color = '\033[0;37;47m'
+        next_shape_start = int((9 - next_shape_width) / 2)
 
         for row in range(self.row + 1):
             for col in range(self.col + max_len):
@@ -166,9 +171,19 @@ class Tetris(threading.Thread):
                     row_print += level[col - self.col]
                     if col == self.col + max_len - 1:
                         row_print += ' ' * (max_len - 3) + '│'
+
                 # TODO: Next shape
-                # elif row == 10 and col > self.col:
-                #     pass
+                elif row in range(15, 20) and col - next_shape_start > self.col:
+                    shape_row = row - 15
+                    shape_col = col - self.col - next_shape_start - 1
+                    try:
+                        shape = next_shape[shape_col][shape_row] and next_shape_color or '\033[0;37;48m'
+                    except IndexError:
+                        shape = '\033[0;37;48m'
+                    row_print += '{}{} '.format(shape, ' ')
+                    if (self.col + max_len - 2) == col:
+                        row_print += '│'
+
                 elif row == col == 0:
                     row_print += '┌'
                 elif row == self.row and col == 0:
