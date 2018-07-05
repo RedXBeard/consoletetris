@@ -1,11 +1,11 @@
 from distutils.core import setup
-from git_merge.settings import VERSION
+from tetris import VERSION
 
 setup(
     name='consoletetris',
     version=VERSION,
     packages=['tetris'],
-    url='',
+    url='https://github.com/RedXBeard/consoletetris',
     license='MIT',
     include_package_data=True,
     author='Barbaros Yildirim',
