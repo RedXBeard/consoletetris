@@ -223,7 +223,7 @@ class Tetris(threading.Thread):
             flag = True
             for i, row in enumerate(Shape.current_rotate):
                 for k, col in enumerate(row):
-                    point = [i + self.col_count + movement, k + self.row_count + 1]
+                    point = [i + self.col_count + movement, k + self.row_count]
                     if (self.board_matrix[point[0], point[1]] > 10 and col > 0) or point[1] == self.row:
                         flag = False
                 if not flag:
