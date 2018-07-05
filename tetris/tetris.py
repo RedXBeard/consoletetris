@@ -1,6 +1,4 @@
 # coding=utf-8
-from __future__ import print_function
-
 import os
 import signal
 import sys
@@ -11,7 +9,7 @@ from random import choice
 
 import click
 
-from shapes import COLORS, SHAPES
+from .shapes import COLORS, SHAPES
 
 EXIT_TEXT = 'Please, CNTR+c one more time.\r'
 EXIT_COUNT = 0

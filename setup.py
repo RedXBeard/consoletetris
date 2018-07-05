@@ -18,7 +18,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     entry_points={
             'console_scripts': [
-                'tetris = tetris.tetris:main',
+                'consoletetris = tetris.tetris:main',
             ],
         },
     classifiers=[
