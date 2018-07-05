@@ -234,11 +234,17 @@ class Tetris(threading.Thread):
 
     def draw_shape(self, persist=False):
         Shape.get_shape(self)
+        no_space_left = False
         for i, row in enumerate(Shape.current_rotate):
             for k, col in enumerate(row):
                 point = [i + self.col_count, k + self.row_count]
-                if col:
+                if self.board_matrix[point[0], point[1]] > 10 and col:
+                    no_space_left = True
+                    break
+                elif col:
                     self.board_matrix[point[0], point[1]] = col + int(persist and 10)
+        if no_space_left:
+            self.shutdown_flag.set()
 
     def draw_next(self):
         shape = self.next_shape[self.next_rotate or 0]
