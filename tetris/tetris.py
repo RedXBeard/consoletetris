@@ -65,8 +65,9 @@ class Shape(threading.Thread):
                 key = click.getchar().lower()
                 if key == ' ':
                     try:
-                        Shape.rotate = Shape.rotate + 1
-                        Shape.current_rotate = Shape.current_shape[Shape.rotate]
+                        if self.board.check_rotation():
+                            Shape.rotate = Shape.rotate + 1
+                            Shape.current_rotate = Shape.current_shape[Shape.rotate]
                     except IndexError:
                         Shape.rotate = 0
                         Shape.current_rotate = Shape.current_shape[Shape.rotate]
@@ -201,6 +202,22 @@ class Tetris(threading.Thread):
                     row_print += '{}{} '.format(COLORS[str(self.board_matrix.get((col, row), 0))], ' ')
             row_print += '\r\n'
         return row_print
+
+    def check_rotation(self):
+        flag = True
+        rotation = Shape.rotate + 1
+        try:
+            shape = Shape.current_shape[rotation]
+        except IndexError:
+            shape = Shape.current_shape[0]
+        for i, row in enumerate(shape):
+            for k, col in enumerate(row):
+                point = [i + self.col_count, k + self.row_count]
+                if (self.board_matrix[point[0], point[1]] > 10 and col > 0) or point[1] >= self.row:
+                    flag = False
+            if not flag:
+                break
+        return flag
 
     def check_rl_movement(self, movement):
         if movement > 0:
