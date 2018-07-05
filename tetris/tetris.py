@@ -13,7 +13,6 @@ import click
 
 from shapes import COLORS, SHAPES
 
-
 EXIT_TEXT = 'Please, CNTR+c one more time.\r'
 EXIT_COUNT = 0
 
@@ -52,7 +51,7 @@ class Shape(threading.Thread):
             Shape.rotate = board.next_rotate
             Shape.board.choose_next_shape()
 
-        Shape.current_shape = Shape.current_shape or SHAPES[choice(SHAPES.keys())]
+        Shape.current_shape = Shape.current_shape or SHAPES[choice(list(SHAPES.keys()))]
         Shape.rotate = Shape.rotate is None and choice(range(len(Shape.current_shape))) or Shape.rotate
         Shape.current_rotate = Shape.current_rotate or Shape.current_shape[Shape.rotate or 0]
 
@@ -125,7 +124,7 @@ class Tetris(threading.Thread):
         if reset:
             self.board_matrix = {(i, j): 0 for i in range(self.col + 1) for j in range(self.row + 1)}
         else:
-            matrix = self.board_matrix.items()
+            matrix = list(self.board_matrix.items())
             for index in range(len(matrix)):
                 first, rest = matrix[index]
                 if 0 < rest < 10:
@@ -310,7 +309,9 @@ class Tetris(threading.Thread):
         full_rows = []
         count = self.col - 2
         for row in range(self.row):
-            row_data = filter(lambda x: x != 0, map(lambda col: self.board_matrix.get((col + 1, row)), range(count)))
+            row_data = list(filter(lambda x: x != 0,
+                                   map(lambda col: self.board_matrix.get((col + 1, row)),
+                                       range(count))))
             if len(row_data) == count:
                 full_rows.append(row)
         for row in full_rows:
@@ -340,14 +341,14 @@ class Tetris(threading.Thread):
         return self.rearrange_board(rows)
 
     def choose_next_shape(self):
-        chosen_shape = SHAPES[choice(SHAPES.keys())]
+        chosen_shape = SHAPES[choice(list(SHAPES.keys()))]
         chosen_rotate = choice(range(len(chosen_shape)))
         self.next_shape = chosen_shape
         self.next_rotate = chosen_rotate
 
     def set_point(self, amount):
         self.point += amount
-        self.level = (self.point / 500) + 1
+        self.level = int((self.point / 500)) + 1
 
     def update(self):
         self.clear_console()
