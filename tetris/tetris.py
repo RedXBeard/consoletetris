@@ -73,10 +73,9 @@ class Shape(threading.Thread):
                         Shape.current_rotate = Shape.current_shape[Shape.rotate]
                     except TypeError:
                         continue
-                    finally:
-                        out = self.board.col - 1 - self.board.col_count - len(Shape.current_rotate)
-                        self.board.col_count += min(0, out)
-                        self.board.update()
+                    out = self.board.col - 1 - self.board.col_count - len(Shape.current_rotate)
+                    self.board.col_count += min(0, out)
+                    self.board.update()
                 elif key == 'a':
                     try:
                         if self.board.check_rl_movement(-1):
