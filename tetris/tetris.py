@@ -99,10 +99,6 @@ class Shape(threading.Thread):
 
 
 class Tetris(threading.Thread):
-    placeholder = '* '
-    CURSOR_UP_ONE = '\x1b[1A'
-    ERASE_LINE = '\x1b[2K'
-
     def __init__(self, row=40, col=40):
         threading.Thread.__init__(self)
         self.row, self.col = row, col
@@ -110,7 +106,7 @@ class Tetris(threading.Thread):
         self.ended_shapes = []
         self.shutdown_flag = threading.Event()
         self.row_count = 0
-        self.col_count = (self.col - 2) / 2
+        self.col_count = int((self.col - 2) / 2)
         self.board_matrix = {}
         self.point = 0
         self.level = 1
@@ -131,7 +127,7 @@ class Tetris(threading.Thread):
 
     def clear_console(self):
         for i in range(0, self.row + 100):
-            sys.stdout.write(self.CURSOR_UP_ONE)
+            sys.stdout.write('\x1b[1A')
 
     def create_board(self):
         row_print = ''
@@ -209,7 +205,7 @@ class Tetris(threading.Thread):
         for i, row in enumerate(shape):
             for k, col in enumerate(row):
                 point = [i + self.col_count, k + self.row_count]
-                if (self.board_matrix[point[0], point[1]] > 10 and col > 0) or point[1] >= self.row:
+                if point[1] >= self.row or (self.board_matrix[point[0], point[1]] > 10 and col > 0):
                     flag = False
             if not flag:
                 break
@@ -223,7 +219,7 @@ class Tetris(threading.Thread):
             for i, row in enumerate(Shape.current_rotate):
                 for k, col in enumerate(row):
                     point = [i + self.col_count + movement, k + self.row_count]
-                    if (self.board_matrix[point[0], point[1]] > 10 and col > 0) or point[1] == self.row:
+                    if point[1] >= self.row or (self.board_matrix[point[0], point[1]] > 10 and col > 0):
                         flag = False
                 if not flag:
                     break
@@ -237,7 +233,7 @@ class Tetris(threading.Thread):
             for i, row in enumerate(Shape.current_rotate):
                 for k, col in enumerate(row):
                     point = [i + self.col_count + movement, k + self.row_count]
-                    if (self.board_matrix[point[0], point[1]] > 10 and col > 0) or point[1] == self.row:
+                    if point[1] == self.row or (self.board_matrix[point[0], point[1]] > 10 and col > 0):
                         flag = False
                 if not flag:
                     break
@@ -245,7 +241,7 @@ class Tetris(threading.Thread):
             return flag
         return True
 
-    def draw_shape(self, persist=False):
+    def check_game_over(self):
         Shape.get_shape(self)
         no_space_left = False
         for i, row in enumerate(Shape.current_rotate):
@@ -254,10 +250,16 @@ class Tetris(threading.Thread):
                 if self.board_matrix[point[0], point[1]] > 10 and col:
                     no_space_left = True
                     break
-                elif col:
-                    self.board_matrix[point[0], point[1]] = col + int(persist and 10)
         if no_space_left:
             self.shutdown_flag.set()
+
+    def draw_shape(self, persist=False):
+        Shape.get_shape(self)
+        for i, row in enumerate(Shape.current_rotate):
+            for k, col in enumerate(row):
+                point = [i + self.col_count, k + self.row_count]
+                if col:
+                    self.board_matrix[point[0], point[1]] = col + int(persist and 10)
 
     def draw_next(self):
         shape = self.next_shape[self.next_rotate or 0]
@@ -270,7 +272,7 @@ class Tetris(threading.Thread):
     def make_board_persist(self):
         self.draw_shape(persist=True)
         self.row_count = 0
-        self.col_count = (self.col - 2) / 2
+        self.col_count = int((self.col - 2) / 2)
 
     def check_board_persistence(self):
         """
@@ -360,11 +362,13 @@ class Tetris(threading.Thread):
             rows = self.check_rows()
             self.rearrange_board(rows)
             Shape.reset()
+            self.check_game_over()
         print(self.create_board())
 
     def move_down(self):
-        self.update()
-        self.row_count += 1
+        if not self.shutdown_flag.is_set():
+            self.update()
+            self.row_count += 1
 
     def run(self):
         self.choose_next_shape()
