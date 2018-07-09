@@ -89,7 +89,8 @@ class Shape(threading.Thread):
                         continue
                 elif key == 's':
                     try:
-                        self.board.move_down()
+                        self.board.action()
+                        self.board.check_board()
                     except TypeError:
                         continue
                 elif key == 'q':
@@ -101,6 +102,7 @@ class Shape(threading.Thread):
 class Tetris(threading.Thread):
     def __init__(self, row=40, col=40):
         threading.Thread.__init__(self)
+        self.lock = threading.Lock()
         self.row, self.col = row, col
         self.current_shape = None
         self.ended_shapes = []
@@ -291,7 +293,7 @@ class Tetris(threading.Thread):
         for i, row in enumerate(Shape.current_rotate):
             for k, col in enumerate(row):
                 point = [i + self.col_count, k + self.row_count + 1]
-                if self.board_matrix[point[0], point[1]] > 10 and col > 0:
+                if point[1] >= self.row or self.board_matrix[point[0], point[1]] > 10 and col > 0:
                     flag = True
             if flag:
                 break
@@ -309,15 +311,15 @@ class Tetris(threading.Thread):
         full_rows = []
         count = self.col - 2
         for row in range(self.row):
-            row_data = list(filter(lambda x: x != 0,
-                                   map(lambda col: self.board_matrix.get((col + 1, row)),
-                                       range(count))))
+            row_data = list(
+                filter(lambda x: x > 10, map(lambda c: self.board_matrix.get((c + 1, row)), range(count)))
+            )
             if len(row_data) == count:
                 full_rows.append(row)
         for row in full_rows:
             for col in range(1, count + 1):
                 self.board_matrix[(col, row)] = 0
-        self.set_point((10 + (full_rows and (len(full_rows) - 1) * 5 or 0)) * len(full_rows))
+        self.set_point((10 + max(0, (len(full_rows) - 1)) * 5) * len(full_rows))
         return full_rows
 
     def rearrange_board(self, rows):
@@ -350,10 +352,7 @@ class Tetris(threading.Thread):
         self.point += amount
         self.level = int((self.point / 500)) + 1
 
-    def update(self):
-        self.clear_console()
-        self.clear_board()
-        self.draw_shape()
+    def check_board(self):
         if self.check_board_persistence():
             Shape.get_shape(self)
             gain_point = len(sum(Shape.current_rotate, []))
@@ -363,17 +362,25 @@ class Tetris(threading.Thread):
             self.rearrange_board(rows)
             Shape.reset()
             self.check_game_over()
+
+    def update(self):
+        self.clear_console()
+        self.clear_board()
+        self.draw_shape()
+        self.check_board()
         print(self.create_board())
 
-    def move_down(self):
+    def action(self):
         if not self.shutdown_flag.is_set():
-            self.update()
-            self.row_count += 1
+            with self.lock:
+                self.update()
+                self.check_board()
+                self.row_count += 1
 
     def run(self):
         self.choose_next_shape()
         while not self.shutdown_flag.is_set():
-            self.move_down()
+            self.action()
             time.sleep(math.pow(3.0/4.0, self.level - 1))
 
 
