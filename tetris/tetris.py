@@ -123,7 +123,7 @@ class Tetris(threading.Thread):
             matrix = list(self.board_matrix.items())
             for index in range(len(matrix)):
                 first, rest = matrix[index]
-                if 0 < rest < 10:
+                if -2 < rest < 10:
                     matrix[index] = (first, 0)
             self.board_matrix = dict(matrix)
 
@@ -193,7 +193,11 @@ class Tetris(threading.Thread):
                 elif col == 0 or col == self.col or col == self.col + max_len - 1:
                     row_print += '│'
                 else:
-                    row_print += '{}{} '.format(COLORS[str(self.board_matrix.get((col, row), 0))], ' ')
+                    val = self.board_matrix.get((col, row), 0)
+                    if val != -1:
+                        row_print += '{}{} '.format(COLORS[str(val)], ' ')
+                    else:
+                        row_print += '{}· '.format(COLORS[str(val)])
             row_print += '\r\n'
         return row_print
 
@@ -254,6 +258,13 @@ class Tetris(threading.Thread):
                     break
         if no_space_left:
             self.shutdown_flag.set()
+
+    def draw_breadcrumb(self):
+        Shape.get_shape(self)
+        for i in range(self.row_count+len(Shape.current_rotate[0]), self.row):
+            for j in range(self.col_count, min(self.col, self.col_count+len(Shape.current_rotate))):
+                if self.board_matrix[j, i] == 0:
+                    self.board_matrix[j, i] = -1
 
     def draw_shape(self, persist=False):
         Shape.get_shape(self)
@@ -367,6 +378,7 @@ class Tetris(threading.Thread):
         self.clear_console()
         self.clear_board()
         self.draw_shape()
+        self.draw_breadcrumb()
         self.check_board()
         print(self.create_board())
 
@@ -375,6 +387,7 @@ class Tetris(threading.Thread):
             with self.lock:
                 self.update()
                 self.check_board()
+                time.sleep(.2)
                 self.row_count += 1
 
     def run(self):
